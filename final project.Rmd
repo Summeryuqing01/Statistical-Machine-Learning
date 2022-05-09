@@ -1,0 +1,128 @@
+---
+title: "Untitled"
+author: "yuqingxia"
+date: "2/9/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(dplyr)
+library(MASS)
+```
+
+2.(a)
+This file contains weather data collected in the city of Delhi from the period of 4 years (from 2013 to 2017). It can be used for the purpose of training. This is purely academic dataset and is developed as a part of Data Analytics course of 2019 at PES University, Bangalore.
+
+2.(b)
+The objective is to see if the data exhibit any trend that suggests the impact of climate change and predict future climate of the city.
+
+3.(c)
+```{r}
+climate = read.csv(file = "DailyDelhiClimateTrain.csv")
+head(climate)
+climate$date = as.Date(climate$date)
+library(lubridate)
+climate$month <- floor_date(climate$date, "month")
+temp <- climate %>%
+  group_by(month) %>%
+  summarize(mean = mean(meantemp))
+```
+
+```{r}
+temp.ts = ts(temp$mean,start = c(2013,1), frequency = 12)
+ts.plot(temp.ts)
+```
+
+we can see that there is a clear seasonality but not sure about trend.
+2.(d)
+```{r}
+acf(as.numeric(temp.ts))
+pacf(as.numeric(temp.ts))
+```
+```{r}
+t = 1:length(temp.ts) 
+fit = lm(temp.ts ~ t)
+bcTransform = boxcox(temp.ts ~ t,plotit = TRUE)
+```
+```{r}
+require(MASS)
+lambda = bcTransform$x[which(bcTransform$y == max(bcTransform$y))]
+temp.bc = (1/lambda)*(temp.ts^lambda-1)
+```
+
+```{r}
+op <- par(mfrow = c(1,2))
+ts.plot(temp.ts,main = "Original data",ylab = expression(X[t]))
+ts.plot(temp.bc,main = "Box-Cox tranformed data", ylab = expression(Y[t]))
+par(op)
+```
+```{r}
+var(temp.ts)
+var(temp.bc)
+```
+
+```{r}
+op = par(mfrow = c(1,2))
+acf(temp.bc,lag.max = 60,main = "")
+pacf(temp.bc,lag.max = 60,main = "")
+title("Box-Cox Transformed Time Series", line = -1, outer=TRUE)
+par(op)
+```
+```{r}
+temp.log = log(temp.ts)
+var(temp.ts)
+var(temp.log)
+op <- par(mfrow = c(1,2))
+ts.plot(temp.ts,main = "Original data",ylab = expression(X[t]))
+ts.plot(temp.log,main = "Log tranformed data", ylab = expression(Y[t]))
+par(op)
+```
+
+```{r}
+op = par(mfrow = c(1,2))
+acf(as.numeric(temp.log),lag.max = 30,main = "")
+pacf(as.numeric(temp.log),lag.max = 30,main = "")
+title("Log Transformed Time Series", line = -1, outer=TRUE)
+par(op)
+```
+
+```{r}
+temp.sqrt = sqrt(temp.ts)
+var(temp.sqrt)
+var(temp.ts)
+```
+
+```{r}
+op <- par(mfrow = c(1,2))
+ts.plot(temp.ts,main = "Original data",ylab = expression(X[t]))
+ts.plot(temp.sqrt,main = "Square root tranformed data", ylab = expression(Y[t]))
+par(op)
+```
+
+
+```{r}
+y1 = diff(temp.log)
+plot(y1,main = "De-trended Time Series",ylab = expression(nabla~Y[t]))
+abline(h = 0,lty = 2)
+var(y1)
+```
+```{r}
+y12 = diff(y1, lag = 12, differences =1)
+ts.plot(y12,main = "De-trended/seasonalized Time Series",ylab = expression(nabla^{12}~nabla~Y[t]))
+abline(h = 0,lty = 2)
+var(y12)
+
+```
+I chose to use the log transformation because it minimizes variance of the model.
+
+2.(e)
+```{r}
+acf(as.numeric(temp.ts))
+pacf(as.numeric(temp.ts))
+```
+This seems to be an SAR(2) model with s = 12. 
